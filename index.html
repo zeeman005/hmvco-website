@@ -6,10 +6,8 @@
 <title>HMV Co. — More Than Just A Drive</title>
 <link rel="icon" href="assets/images/hmvco_favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,900;1,700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
-<!-- Three.js via static scripts — no dynamic import issues -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+<!-- Google model-viewer — guaranteed 3D rendering in all browsers -->
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 <style>
 :root{
   --black:#080808;--white:#f4f1ec;--orange:#ff6a00;
@@ -65,11 +63,23 @@ nav.scrolled{background:rgba(8,8,8,.9);backdrop-filter:blur(20px);border-color:r
 .nav-drop-btn:hover{color:var(--black)}
 .nav-drop-btn:hover::before{transform:translateX(0)}
 
-/* ── HERO — full bleed Porsche ───────────────────────── */
+/* ── HERO ─────────────────────────────────────────────── */
 #hero{position:relative;height:100vh;overflow:hidden;display:flex;align-items:flex-end}
 
-#porsche-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:2;display:block}
-.hero-bg-fallback{position:absolute;inset:0;z-index:1;background-image:url('assets/images/IMG_4610.jpg');background-size:cover;background-position:center;filter:brightness(.3) saturate(.6);transition:opacity 1.2s ease}
+/* model-viewer fills the right 65% of the hero */
+#porsche-viewer{
+  position:absolute;
+  top:0;right:0;
+  width:65%;height:100%;
+  z-index:2;
+  background:transparent;
+  --progress-bar-color:transparent;
+  --progress-mask:transparent;
+}
+/* subtle left bleed so car peeks into the text side */
+#porsche-viewer::after{display:none}
+
+.hero-bg-fallback{position:absolute;inset:0;z-index:1;background-image:url('assets/images/IMG_4610.jpg');background-size:cover;background-position:center;filter:brightness(.25) saturate(.5)}
 
 .hero-grad{position:absolute;inset:0;z-index:3;background:linear-gradient(to top,rgba(8,8,8,1) 0%,rgba(8,8,8,.55) 35%,transparent 65%),linear-gradient(to right,rgba(8,8,8,.9) 0%,rgba(8,8,8,.3) 50%,transparent 80%);pointer-events:none}
 .hero-floor-glow{position:absolute;bottom:0;left:0;right:0;height:45%;z-index:3;background:radial-gradient(ellipse 80% 60% at 60% 110%,rgba(255,106,0,.22),transparent 65%);pointer-events:none}
@@ -357,7 +367,27 @@ footer{border-top:1px solid rgba(244,241,236,.05);padding:80px 48px 40px;display
 
 <!-- ═══ HERO ═══ -->
 <section id="hero">
-  <canvas id="porsche-canvas"></canvas>
+  <!-- model-viewer: drag to spin, auto-rotates, works in every browser -->
+  <model-viewer
+    id="porsche-viewer"
+    src="assets/3d/porsche_911_991.2_turbo_s.glb"
+    alt="Porsche 911 Turbo S"
+    auto-rotate
+    auto-rotate-delay="500"
+    rotation-per-second="18deg"
+    camera-controls
+    disable-zoom
+    camera-orbit="15deg 75deg 105%"
+    min-camera-orbit="auto 60deg auto"
+    max-camera-orbit="auto 90deg auto"
+    exposure="1.1"
+    shadow-intensity="1.2"
+    shadow-softness="0.8"
+    environment-image="neutral"
+    poster="assets/images/IMG_4610.jpg"
+    loading="eager"
+    reveal="auto"
+  ></model-viewer>
   <div class="hero-bg-fallback" id="hero-fallback"></div>
   <div class="hero-grad"></div>
   <div class="hero-floor-glow"></div>
@@ -725,130 +755,13 @@ window.addEventListener('scroll',()=>{ const sy=window.scrollY;const lb=document
 let lastSy=0;
 window.addEventListener('scroll',()=>{ const delta=Math.abs(window.scrollY-lastSy);const el=document.querySelector('.marquee-inner');if(el)el.style.animationDuration=Math.max(8,22-delta*.4)+'s';lastSy=window.scrollY; },{passive:true});
 
-/* ═══ THREE.JS PORSCHE ═══
-   Uses the static THREE, GLTFLoader, OrbitControls loaded in <head>
-*/
-(function initPorsche() {
-  const canvas = document.getElementById('porsche-canvas');
-  const fallback = document.getElementById('hero-fallback');
-
-  if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
-    // libs not loaded yet — retry once
-    setTimeout(initPorsche, 500);
-    return;
-  }
-
-  const W = () => canvas.parentElement.clientWidth;
-  const H = () => canvas.parentElement.clientHeight;
-
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(W(), H());
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.4;
-
-  const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(40, W() / H(), 0.1, 200);
-  cam.position.set(6, 2.5, 7);
-  cam.lookAt(0, 0.6, 0);
-
-  // Lights — dramatic orange key
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-
-  const key = new THREE.SpotLight(0xff6a00, 20, 40, Math.PI / 5, 0.35);
-  key.position.set(6, 10, 6);
-  key.castShadow = true;
-  key.shadow.bias = -0.001;
-  scene.add(key);
-
-  const rim = new THREE.DirectionalLight(0x4488ff, 3);
-  rim.position.set(-8, 4, -8);
-  scene.add(rim);
-
-  const fill = new THREE.DirectionalLight(0xffffff, 1);
-  fill.position.set(2, 4, -10);
-  scene.add(fill);
-
-  // Orange ground glow
-  const groundLight = new THREE.PointLight(0xff4400, 4, 8);
-  groundLight.position.set(0, -0.5, 0);
-  scene.add(groundLight);
-
-  // Reflective floor
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(30, 30),
-    new THREE.MeshStandardMaterial({ color: 0x080808, metalness: 0.9, roughness: 0.2 })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.01;
-  floor.receiveShadow = true;
-  scene.add(floor);
-
-  // Controls — drag to spin
-  const controls = new THREE.OrbitControls(cam, canvas);
-  controls.enableZoom = false;
-  controls.enablePan = false;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 1.5;
-  controls.minPolarAngle = Math.PI / 6;
-  controls.maxPolarAngle = Math.PI / 2.2;
-  controls.target.set(0, 0.6, 0);
-
-  // Load Porsche GLB
-  const loader = new THREE.GLTFLoader();
-  loader.load(
-    'assets/3d/porsche_911_991.2_turbo_s.glb',
-    function(gltf) {
-      const model = gltf.scene;
-
-      // Auto-fit model
-      const box = new THREE.Box3().setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 4 / maxDim;
-      model.scale.setScalar(scale);
-      model.position.copy(center.multiplyScalar(-scale));
-      model.position.y = 0;
-
-      model.traverse(child => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-
-      scene.add(model);
-
-      // Hide the fallback photo once car loads
-      fallback.style.opacity = '0';
-
-      let t = 0;
-      (function tick() {
-        requestAnimationFrame(tick);
-        t += 0.003;
-        key.position.x = Math.sin(t) * 3 + 6;
-        key.position.z = Math.cos(t * 0.7) * 3 + 4;
-        groundLight.intensity = 3 + Math.sin(t * 2) * 1;
-        controls.update();
-        renderer.render(scene, cam);
-      })();
-    },
-    undefined,
-    function() {
-      // GLB failed — fallback photo stays visible, canvas hidden
-      canvas.style.display = 'none';
-    }
-  );
-
-  window.addEventListener('resize', () => {
-    cam.aspect = W() / H();
-    cam.updateProjectionMatrix();
-    renderer.setSize(W(), H());
+/* model-viewer: hide fallback once Porsche loads */
+const mv = document.getElementById('porsche-viewer');
+if (mv) {
+  mv.addEventListener('load', () => {
+    document.getElementById('hero-fallback').style.opacity = '0';
   });
-})();
+}
 </script>
 </body>
 </html>
