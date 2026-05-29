@@ -1,0 +1,4 @@
+node_modules/
+screenshot*.png
+screenshot.mjs
+package*.json
